@@ -6,6 +6,7 @@ import com.github.ilim.backend.ilimPaymentHandlerServ.config.StripeConfig;
 import com.github.ilim.backend.ilimPaymentHandlerServ.service.KafkaPublisherService;
 import com.stripe.exception.SignatureVerificationException;
 import com.stripe.model.Event;
+import com.stripe.model.PaymentIntent;
 import com.stripe.net.Webhook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -67,9 +68,15 @@ public class StripeWebhookController {
                     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid event data");
                 }
 
-                // Extract payment-related details
+                String paymentIntentId = objectNode.get("payment_intent").asText();
+
+                PaymentIntent paymentIntent = PaymentIntent.retrieve(paymentIntentId);
+
+                String paymentStatus = paymentIntent.getStatus();
+                long createdTimestamp = paymentIntent.getCreated();
+                String paymentDate = String.valueOf(createdTimestamp);
+
                 String paymentId = objectNode.get("id").asText();
-                String paymentStatus = objectNode.get("status").asText();
                 JsonNode customerDetailsNode = objectNode.get("customer_details");
                 String name = customerDetailsNode.get("name").asText();
                 String email = customerDetailsNode.get("email").asText();
@@ -82,21 +89,16 @@ public class StripeWebhookController {
                     logger.warn("No metadata found in the session");
                 }
 
-                String userId = metadataNode != null && metadataNode.has("userId") ? metadataNode.get("userId").asText() : "Unknown";
-                String courseIdStr = metadataNode != null && metadataNode.has("courseId") ? metadataNode.get("courseId").asText() : "0";
-                Long courseId = 0L;
-                try {
-                    courseId = Long.parseLong(courseIdStr);
-                } catch (NumberFormatException e) {
-                    logger.warn("Invalid courseId format: {}", courseIdStr);
-                }
+                String userId = metadataNode != null && metadataNode.has("userId") ? metadataNode.get("userId").asText() : null;
+                String courseId = metadataNode != null && metadataNode.has("courseId") ? metadataNode.get("courseId").asText() : null;
 
                 // Construct the custom JSON to publish
                 JsonNode customJsonNode = objectMapper.createObjectNode()
                         .put("userId", userId)
                         .put("courseId", courseId)
                         .put("status", paymentStatus)
-                        .put("name",name )
+                        .put("paymentDate", paymentDate)
+                        .put("name", name)
                         .put("paymentId", paymentId)
                         .put("mobileNumber", mobileNumber)
                         .put("email", email);
@@ -113,7 +115,6 @@ public class StripeWebhookController {
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to process event");
             }
         } else {
-
             logger.info("Unhandled event type: {}", eventType);
         }
 

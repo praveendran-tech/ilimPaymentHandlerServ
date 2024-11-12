@@ -1,6 +1,6 @@
 package com.github.ilim.backend.ilimPaymentHandlerServ.model;
 
-import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
@@ -9,8 +9,8 @@ public class CheckoutRequest {
     @NotBlank(message = "userId is required")
     private String userId;
 
-    @NotNull(message = "courseId is required")
-    private Long courseId;
+    @NotBlank(message = "courseId is required")
+    private String courseId;
 
     @NotBlank(message = "courseName is required")
     private String courseName;
@@ -19,7 +19,7 @@ public class CheckoutRequest {
     private String courseDescription;
 
     @NotNull(message = "coursePrice is required")
-    @Min(value = 1, message = "coursePrice must be at least 0.01")
+    @DecimalMin(value = "0.01", message = "coursePrice must be at least 0.01")
     private Double coursePrice;
 
     @NotBlank(message = "currency is required")
@@ -35,11 +35,11 @@ public class CheckoutRequest {
         this.userId = userId;
     }
 
-    public Long getCourseId() {
+    public String getCourseId() {
         return courseId;
     }
 
-    public void setCourseId(Long courseId) {
+    public void setCourseId(String courseId) {
         this.courseId = courseId;
     }
 
